@@ -303,8 +303,8 @@ class MoneySetting(QtWidgets.QWidget):
     def setMoney(self):
         if SET_USER_BALANCE(self.money.text(), self.account.id):
             self.account.setMoney(self.money.text())
-            self.text1.setText("Balance: ${}".format(self.account.balance))
-            self.text2.setText("[{}] {} {}: ${}".format(self.account.id, self.account.name, self.account.surname, self.account.balance))
+            self.text1.setText("Balance: {}{}".format(currency,self.account.balance))
+            self.text2.setText("[{}] {} {}: {}{}".format(self.account.id, self.account.name, self.account.surname, currency, self.account.balance))
             self.close()
         else:
             print("something went wrong")
@@ -326,7 +326,7 @@ class AccountManager(QtWidgets.QWidget):
         self.age.setStyleSheet(inputStyle)
         self.id = QtWidgets.QLabel("ID: {}".format(self.account.id))
         self.id.setStyleSheet(inputStyle)
-        self.balance = QtWidgets.QLabel("Balance: ${}".format(self.account.balance))
+        self.balance = QtWidgets.QLabel("Balance: {}{}".format(currency,self.account.balance))
         self.balance.setStyleSheet(inputStyle)
         self.copyID = QtWidgets.QPushButton("Copy ID to clipboard")
         self.copyID.setStyleSheet(buttonStyle)
@@ -365,7 +365,7 @@ class AccountButton(QtWidgets.QWidget):
         super().__init__()
         self.account = account
         self.accountManagerWindow = None
-        self.button = QtWidgets.QPushButton("[{}] {} {}: ${}".format(account.id, account.name, account.surname, account.balance))
+        self.button = QtWidgets.QPushButton("[{}] {} {}: {}{}".format(account.id, account.name, account.surname, currency, account.balance))
         self.button.setStyleSheet(accountButton);
         layout.addWidget(self.button)
         self.button.clicked.connect(self.buttonClick)
@@ -450,8 +450,8 @@ class MoneyTransactionForm(QtWidgets.QWidget):
                 if CHECK_IF_USER_EXISTS(self.id.text()):
                     if self.account.removeMoney(self.money.text()):
                         if UPDATE_USER_BALANCE(self.account, self.id.text(), self.money.text()):
-                            self.showdialog("${} sent from: {} to account {}".format(self.money.text(), self.account.id, self.id.text()), "Success")
-                            self.balanceText.setText("Your Balance: ${}".format(self.account.balance))
+                            self.showdialog("{}{} sent from: {} to account {}".format(currency,self.money.text(), self.account.id, self.id.text()), "Success")
+                            self.balanceText.setText("Your Balance: {}{}".format(currency, self.account.balance))
                             self.destroy()
                         else:
                             self.showdialog("Something went wrong", "Error")
@@ -485,7 +485,7 @@ class AccountWindow(QtWidgets.QWidget):
         self.account = account
         self.welcome = QtWidgets.QLabel("Welcome back, {}".format(self.account.name))
         self.welcome.setStyleSheet(headingStyle);
-        self.balance = QtWidgets.QLabel("Your Balance: ${}".format(self.account.balance))
+        self.balance = QtWidgets.QLabel("Your Balance: {}{}".format(currency, self.account.balance))
         self.balance.setStyleSheet(headingStyle);
         self.send = QtWidgets.QPushButton("Send Money")
         self.send.setStyleSheet(buttonStyle)
