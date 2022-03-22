@@ -7,7 +7,7 @@ import sys
 import os, os.path
 import sqlite3
 from sqlite3 import Error
-
+import pyperclip
 # Variable Declaring
 currency = "$"
 version = "3.0"
@@ -41,7 +41,17 @@ buttonStyle = '''
     font-size: 18px;
     border-radius: 5px;
     padding-left: 10px;
-    background-color: #404EED;
+    background-color: #2523e7;
+    color: white;
+    font-weight: bold;
+'''
+buttonStyleClicked = '''
+    border: none;
+    height: 40px;
+    font-size: 18px;
+    border-radius: 5px;
+    padding-left: 10px;
+    background-color: #F44336;
     color: white;
     font-weight: bold;
 '''
@@ -92,6 +102,12 @@ def UPDATE_USER_BALANCE(account, target_id, money):
     sqliteConnection.commit()
     return True
   
+def SET_USER_BALANCE(balance, account_id):
+    sqliteConnection = sqlite3.connect('./database/data.sqlite')
+    cursor = sqliteConnection.cursor()
+    cursor.execute("UPDATE users SET balance = ? WHERE id = ?", (balance, account_id,))
+    sqliteConnection.commit()
+    return True
 
 def REGISTER_NEW_ACCOUNT(name, surname, age, gender, id, pin, balance):
     try:
@@ -201,6 +217,7 @@ class LoginForm(QtWidgets.QWidget):
         super().__init__()
         self.setWindowTitle("Bank System v{}".format(version))
         self.setIcon()
+        self.resize(400, 100)
         self.window = None
         self.welcome = QtWidgets.QLabel("Welcome User. Login using your credentials")
         self.welcome.setStyleSheet(headingStyle);
@@ -260,6 +277,107 @@ class LoginForm(QtWidgets.QWidget):
         else:
             self.showdialog("ID or/and Pin fields cannot be empty")
 
+class MoneySetting(QtWidgets.QWidget):
+    def __init__(self, account, text1, text2):
+        super().__init__()
+        self.setWindowTitle("Set Money for account {} {}".format(account.name, account.surname))
+        self.resize(400, 100)
+        self.setIcon()
+        self.account = account
+        self.text1 = text1
+        self.text2 = text2
+        self.money = QtWidgets.QLineEdit(placeholderText="Enter the amount of money to be set")
+        self.money.setStyleSheet(inputStyle)
+        self.confirmation = QtWidgets.QPushButton("Confirm")
+        self.confirmation.setStyleSheet(buttonStyle)
+        self.confirmation.clicked.connect(self.setMoney)
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.addWidget(self.money)
+        self.layout.addWidget(self.confirmation)
+
+    def setIcon(self):
+        appIcon = QIcon("icon.png")
+        self.setWindowIcon(appIcon)
+
+    @QtCore.Slot()
+    def setMoney(self):
+        if SET_USER_BALANCE(self.money.text(), self.account.id):
+            self.account.setMoney(self.money.text())
+            self.text1.setText("Balance: ${}".format(self.account.balance))
+            self.text2.setText("[{}] {} {}: ${}".format(self.account.id, self.account.name, self.account.surname, self.account.balance))
+            self.close()
+        else:
+            print("something went wrong")
+
+class AccountManager(QtWidgets.QWidget):
+    def __init__(self, account, balance_text):
+        super().__init__()
+        self.setWindowTitle("Account Manager - {} {}".format(account.name, account.surname))
+        self.resize(400, 100)
+        self.setIcon()
+        self.account = account
+        self.balance_text = balance_text
+        self.moneyWindow = None
+        self.name = QtWidgets.QLabel("Name: {}".format(self.account.name))
+        self.name.setStyleSheet(inputStyle)
+        self.surname = QtWidgets.QLabel("Surname: {}".format(self.account.surname))
+        self.surname.setStyleSheet(inputStyle)
+        self.age = QtWidgets.QLabel("Age: {}".format(self.account.age))
+        self.age.setStyleSheet(inputStyle)
+        self.id = QtWidgets.QLabel("ID: {}".format(self.account.id))
+        self.id.setStyleSheet(inputStyle)
+        self.balance = QtWidgets.QLabel("Balance: ${}".format(self.account.balance))
+        self.balance.setStyleSheet(inputStyle)
+        self.copyID = QtWidgets.QPushButton("Copy ID to clipboard")
+        self.copyID.setStyleSheet(buttonStyle)
+        self.copyID.clicked.connect(self.copy)
+        self.setMoney = QtWidgets.QPushButton("Set Money")
+        self.setMoney.setStyleSheet(buttonStyle)
+        self.setMoney.clicked.connect(self.openMoneyWindow)
+        self.layout = QtWidgets.QVBoxLayout(self)
+        self.layout.addWidget(self.name)
+        self.layout.addWidget(self.surname)
+        self.layout.addWidget(self.age)
+        self.layout.addWidget(self.id)
+        self.layout.addWidget(self.balance)
+        self.layout.addWidget(self.copyID)
+        self.layout.addWidget(self.setMoney)
+    def setIcon(self):
+        appIcon = QIcon("icon.png")
+        self.setWindowIcon(appIcon)
+
+    @QtCore.Slot()
+    def copy(self):
+        pyperclip.copy(self.account.id)
+        self.copyID.setStyleSheet(buttonStyleClicked)
+        self.copyID.setText("Copied")
+
+    @QtCore.Slot()
+    def openMoneyWindow(self):
+        if self.moneyWindow is None:
+            self.moneyWindow = MoneySetting(self.account, self.balance, self.balance_text)
+            self.moneyWindow.show()
+        else:
+            self.moneyWindow = None 
+
+class AccountButton(QtWidgets.QWidget):
+    def __init__(self, account, layout):
+        super().__init__()
+        self.account = account
+        self.accountManagerWindow = None
+        self.button = QtWidgets.QPushButton("[{}] {} {}: ${}".format(account.id, account.name, account.surname, account.balance))
+        self.button.setStyleSheet(accountButton);
+        layout.addWidget(self.button)
+        self.button.clicked.connect(self.buttonClick)
+
+    @QtCore.Slot()
+    def buttonClick(self):
+        if self.accountManagerWindow is None:
+            self.accountManagerWindow = AccountManager(self.account, self.button)
+            self.accountManagerWindow.show()
+        else:
+            self.accountManagerWindow = None 
+
 class AdminPanel(QtWidgets.QWidget):
     def __init__(self):
         super().__init__()
@@ -276,8 +394,7 @@ class AdminPanel(QtWidgets.QWidget):
         ''')
         self.layout.addWidget(self.heading)
         for account in alls:
-            self.account = QtWidgets.QPushButton("[{}] {} {}: ${}".format(account.id, account.name, account.surname, account.balance))
-            self.account.setStyleSheet(accountButton);
+            self.account = AccountButton(account, self.layout)
             self.layout.addWidget(self.account)
         self.search = QtWidgets.QPushButton("Search")
         self.search.setStyleSheet(buttonStyle)
@@ -290,7 +407,7 @@ class AdminPanel(QtWidgets.QWidget):
     @QtCore.Slot()
     def goBack(self):
         if self.accountWindow is None:
-            self.accountWindow = AccountWindow(active_account   )
+            self.accountWindow = AccountWindow(active_account)
             self.accountWindow.show()
             global accounts
             accounts = list()   
@@ -426,6 +543,11 @@ class Account:
         account.balance = balance
         account.id = id
         account.pin = pin
+
+    def setMoney(account, money):
+        money = int(money)
+        account.balance = money
+        return True
 
     def addMoney(account, money):
         money = int(money)
